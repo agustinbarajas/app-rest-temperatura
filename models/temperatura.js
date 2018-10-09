@@ -1,7 +1,8 @@
-exports = module.exports = function(app, mongoose) {
-	var temperatura = mongoose.Schema({
-		temperatura:	{ type: Number },
-		fecha:		{ type: Date }
-	});
-	mongoose.model('Temperatura', temperatura);
-}
+const mongoose = require("mongoose"),
+      Schema = mongoose.Schema;
+
+const temperaturaSchema = new Schema({
+		temperatura: { type: Number },
+		fecha: { type: Date, default: Date.now }
+});
+module.exports = mongoose.model('Temperatura', temperaturaSchema);
