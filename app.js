@@ -12,8 +12,11 @@ app.use(bodyParser.json());
 
 //APIS
 app.route("/temperatura")
-   .get(temperaturaController.getLastTemperature)
-   .post(temperaturaController.addTemperature);
+    .get(temperaturaController.getLastTemperature)
+    .post(temperaturaController.addTemperature);
+app.route("/temperatura/historico")
+    .get(temperaturaController.getAllTemperatures);
+
 
 app.listen(port, () =>{
 	console.log("Servidor escuchando");
