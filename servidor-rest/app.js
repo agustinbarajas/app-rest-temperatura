@@ -16,7 +16,8 @@ app.route("/temperatura")
     .post(temperaturaController.addTemperature);
 app.route("/temperatura/historico")
     .get(temperaturaController.getAllTemperatures);
-
+app.route("/temperatura/grafica")
+    .get(temperaturaController.getTemperatureLastTwoDays);
 
 app.listen(port, () =>{
 	console.log("Servidor escuchando");
