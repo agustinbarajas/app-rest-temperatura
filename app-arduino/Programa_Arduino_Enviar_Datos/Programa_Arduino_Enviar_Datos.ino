@@ -1,83 +1,63 @@
-#include "ESP8266.h"
-#include <SoftwareSerial.h>
+#include <SPI.h>
+#include <Ethernet.h>
 
-const char* SSID = "NOMBRE DE LA RED";
-const char* PASSWORD = "PASSWORD DE LA RED";
-const int HOST_PORT = 80;
-const char* SERVER = "https://app-temperatura.herokuapp.com";
-const char* URI = "/temperatura";
+//DIRECCION MAC
+byte mac[] = {
+  0x84, 0xA6, 0xC8, 0x8D, 0x25, 0x6C
+};
 
-
-
-SoftwareSerial softSerial(2, 3); // RX, TX
-ESP9266 wifi(softSerial);
+//INICIZLIZAR UN CLIENTE WEB
+EthernetClient client;
 
 void setup() {
   Serial.begin(9600);
-
-  if(wifi.setOprToStationSoftAp()){
-    Serial.print("to station + softap ok\r\n");
-  }else{
-    Serial.print("to station + softap err\r\n");
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
   }
-
-  if(wifi.joinAP(SSID, PASSWORD)){
-    Serial.print("Conexion a la red exitosa\r\n");
-    Serial.print("IP:");
-    Serial.println(wifi.getLocalIP().c_str());
-  }else{
-    Serial.print("Fallo al realizar la conexion a la red\r\n");
+  Serial.println("Empieza la configuracion del modulo");
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Error al obtener una direccion ip por medio de DHCP");
+    for (;;)
+      ;
   }
-
-  if(wifi.disableMUX()){
-    Serial.print("Single ok\r\n");
-  }else{
-    Serial.print("Single err\r\n");
+  Serial.print("Mi direccion IP es: ");
+  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+    Serial.print(Ethernet.localIP()[thisByte], DEC);
+    Serial.print(".");
   }
-  Serial.print("Fin de la configuracion");
+  Serial.println();
+  delay(1000);
 }
 
 void loop() {
-  httpPost(obtenerTemperatura());
+  httpPOST(obtenerTemperatura());
   delay(600000);
 }
 
 //============ LEER DATOS DEL SENSOR(LM35) ============
 float obtenerTemperatura(){
-  float lecturaSensor = analogRead(0);
+  //float lecturaSensor = analogRead(0);
+  float lecturaSensor = random(1024);
   return (5.0 * lecturaSensor * 100.0)/1024.0;
 }
 
-//============ ENVIAR LOS DATOS AL SERVIDOR ============  
-void httpPOST(float temperatura) {
-  wifi.println("AT+CIPSTART=\"TCP\",\""+SERVER+"\","+HOST_PORT);//COMENZAR UNA CONEXION TCP
-  if(wifi.find("OK")){
-    Serial.println("Conexion TCP listo");
+//============ ENVIAR LOS DATOS AL SERVIDOR ============
+void httpPOST(float temperatura){
+  String json = "{\"temperatura\":";
+  json += temperatura;
+  json += "}";
+  Serial.println("Empezamos la conexion");
+  if(client.connect("192.168.1.109", 3000)){
+    client.println("POST / HTTP/1.1");
+    client.println("Host: 192.168.1.109");
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(json.length());
+    client.println();
+    client.println(json);
+    Serial.println("Peticion enviada");
   }
-  const char* json = "{temperatura: "+temperatura+"}";
-  delay(1000);
-  String POST = "POST"+URI+" HTTP/1.0\r\n"+
-                "HOST: "+SERVER+"\r\n"+
-                "Accept: *"+"/"+"*\r\n"+
-                "Content-Type: application/json\r\n"+
-                "\r\n"+json;
-   String sendCmd = "AT+CIPSEND=";//DETERMINA EL NUMERO DE CARACTERES A ENVIAR
-   wifi.print(sendCmd);
-   wifi.println(POST.length());
-   delay(500);
-   if(wifi.find(">")){
-    Serial.println("Enviando...") ;
-    wifi.print(POST);
-    
-    if(wifi.find("SEND OK")){
-      Serial.println("Datos enviados");
-      while(wifi.avaible()){
-        String respuesta = wifi.readString();
-        Serial.println(respuesta) ;
-      }
-
-      wifi.println("AT+CIPCLOSE");//CERRAMOS LA CONEXION
-    }
-
-   }  
+  if(client.connected()){
+    client.stop();
+  }
 }
